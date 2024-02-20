@@ -1,11 +1,14 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
 	"net"
 
 	"github.com/SakBlues/zinx/ziface"
 )
+
+var _ ziface.IServer = (*Server)(nil)
 
 // Server is based on TCP.
 type Server struct {
@@ -13,6 +16,17 @@ type Server struct {
 	ipVersion string
 	ip        string
 	port      int
+}
+
+// TODO: change the HardCode, optimize to customize.
+// handleAPI for connection.
+func CallBackToClient(conn *net.TCPConn, data []byte, cnt int) error {
+	fmt.Println("[Conn Handle] CallBackToClient ... ")
+	if _, err := conn.Write(data[:cnt]); err != nil {
+		fmt.Println("Write back buf err:", err)
+		return errors.New("CallBackToClient error")
+	}
+	return nil
 }
 
 func (s *Server) Start() {
@@ -37,6 +51,8 @@ func (s *Server) Start() {
 		}
 
 		fmt.Println("Start Zinx server:", s.name, "success. Listenning...")
+		var cid uint32
+		cid = 0
 
 		// 3. Accept and handle business.
 		for {
@@ -47,29 +63,17 @@ func (s *Server) Start() {
 				continue
 			}
 
+			dealConn := NewConnection(conn, cid, CallBackToClient)
+			// TODO: concurrency, and out of bounds.
+			cid++
+
 			// TODO
 			// 3.2 Validate config, e.g., close the connection if exceed the max connections, etc.
 
 			// TODO
 			// 3.3 Handler business. Handler and conn should be bound at this point.
 			// Here is a demo: an echo service of up to 512 bytes.
-			go func() {
-				for {
-					buf := make([]byte, 512)
-					cnt, err := conn.Read(buf)
-					if err != nil {
-						fmt.Println("Receive buf err:", err)
-						continue
-					}
-
-					fmt.Printf("Receive client buf: %s, cnt = %d\n", buf, cnt)
-
-					if _, err := conn.Write(buf[:cnt]); err != nil {
-						fmt.Println("Write back buf err:", err)
-						continue
-					}
-				}
-			}()
+			go dealConn.Start()
 		}
 	}()
 }
