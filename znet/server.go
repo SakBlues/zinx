@@ -1,7 +1,6 @@
 package znet
 
 import (
-	"errors"
 	"fmt"
 	"net"
 
@@ -16,18 +15,19 @@ type Server struct {
 	ipVersion string
 	ip        string
 	port      int
+
+	Router ziface.IRouter
 }
 
-// TODO: change the HardCode, optimize to customize.
-// handleAPI for connection.
-func CallBackToClient(conn *net.TCPConn, data []byte, cnt int) error {
-	fmt.Println("[Conn Handle] CallBackToClient ... ")
-	if _, err := conn.Write(data[:cnt]); err != nil {
-		fmt.Println("Write back buf err:", err)
-		return errors.New("CallBackToClient error")
-	}
-	return nil
-}
+// TODO: Remove.
+// func CallBackToClient(conn *net.TCPConn, data []byte, cnt int) error {
+// 	fmt.Println("[Conn Handle] CallBackToClient ... ")
+// 	if _, err := conn.Write(data[:cnt]); err != nil {
+// 		fmt.Println("Write back buf err:", err)
+// 		return errors.New("CallBackToClient error")
+// 	}
+// 	return nil
+// }
 
 func (s *Server) Start() {
 	fmt.Printf("[START] Server listenner at IP: %s, Port %d, Starting...\n", s.ip, s.port)
@@ -51,9 +51,8 @@ func (s *Server) Start() {
 		}
 
 		fmt.Println("Start Zinx server:", s.name, "success. Listenning...")
-		var cid uint32
-		cid = 0
 
+		cid := uint32(0)
 		// 3. Accept and handle business.
 		for {
 			//3.1 Block to wait for client connect.
@@ -63,8 +62,7 @@ func (s *Server) Start() {
 				continue
 			}
 
-			dealConn := NewConnection(conn, cid, CallBackToClient)
-			// TODO: concurrency, and out of bounds.
+			dealConn := NewConnection(conn, cid, s.Router)
 			cid++
 
 			// TODO
@@ -95,13 +93,18 @@ func (s *Server) Serve() {
 	select {}
 }
 
+func (s *Server) AddRouter(router ziface.IRouter) {
+	s.Router = router
+	fmt.Println("Add router success.")
+}
+
 func NewServer(name string) ziface.IServer {
 	s := &Server{
 		name:      name,
 		ipVersion: "tcp4",
 		ip:        "0.0.0.0",
 		port:      8999,
+		Router:    nil,
 	}
-
 	return s
 }

@@ -16,21 +16,21 @@ type Connection struct {
 
 	isClosed bool
 
-	handleAPI ziface.HandFunc
-
 	// used to call connection to exit
-	exitChan chan bool
+	ExitChan chan struct{}
+
+	// Router contains the HandlerFunc for the IRequest.
+	Router ziface.IRouter
 }
 
-func NewConnection(conn *net.TCPConn, connID uint32, callback_api ziface.HandFunc) *Connection {
+func NewConnection(conn *net.TCPConn, connID uint32, router ziface.IRouter) *Connection {
 	c := &Connection{
-		conn:      conn,
-		connID:    connID,
-		isClosed:  false,
-		handleAPI: callback_api,
-		exitChan:  make(chan bool),
+		conn:     conn,
+		connID:   connID,
+		isClosed: false,
+		ExitChan: make(chan struct{}),
+		Router:   router,
 	}
-
 	return c
 }
 
@@ -46,16 +46,35 @@ func (c *Connection) StartReader() {
 		cnt, err := c.conn.Read(buf)
 		if err != nil {
 			fmt.Println("recv buf err:", err)
-			c.exitChan <- true
+			c.ExitChan <- struct{}{}
 			continue
 		}
 
 		// Call the handleFunc bounded to connection.
-		if err := c.handleAPI(c.conn, buf, cnt); err != nil {
-			fmt.Println("connID:", c.connID, ", handle err:", err)
-			c.exitChan <- true
-			return
+		// if err := c.HandleAPI(c.conn, buf, cnt); err != nil {
+		// 	fmt.Println("connID:", c.connID, ", handle err:", err)
+		// 	c.ExitChan <- struct{}{}
+		// 	return
+		// }
+
+		req := Request{
+			conn: c,
+			data: buf[:cnt],
 		}
+
+		// Call the Router to handle business.
+		// TODO: error handle.
+		go func(req *Request) {
+			c.Router.PreHandle(req)
+			c.Router.Handle(req)
+			c.Router.PostHandle(req)
+		}(&req)
+
+		// if err := c.Router.Handle(c.conn, buf, cnt); err != nil {
+		// 	fmt.Println("connID:", c.connID, ", handle err:", err)
+		// 	c.ExitChan <- struct{}{}
+		// 	return
+		// }
 	}
 }
 
@@ -64,19 +83,20 @@ func (c *Connection) Start() {
 
 	go c.StartReader()
 
-	for {
-		select {
-		case <-c.exitChan:
-			// Current goroutine exit, and lead to relative goroutine exit.
-			return
-		}
-	}
+	<-c.ExitChan
+	// for {
+	// 	select {
+	// 	case <-c.ExitChan:
+	// 		// Current goroutine exit, and lead to relative goroutine exit.
+	// 		return
+	// 	}
+	// }
 }
 
 func (c *Connection) Stop() {
 	fmt.Println("Connection Stop(), connID:", c.connID)
 
-	if c.isClosed == true {
+	if c.isClosed {
 		return
 	}
 	c.isClosed = true
@@ -85,7 +105,7 @@ func (c *Connection) Stop() {
 	c.conn.Close()
 
 	// Recycle resource.
-	close(c.exitChan)
+	close(c.ExitChan)
 }
 
 func (c *Connection) GetTCPConnection() *net.TCPConn {
