@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/SakBlues/zinx/utils"
 	"github.com/SakBlues/zinx/ziface"
 )
 
@@ -42,7 +43,7 @@ func (c *Connection) StartReader() {
 
 	for {
 		// Read client data to buf.
-		buf := make([]byte, 512)
+		buf := make([]byte, utils.GlobalObject.MaxPacketSize)
 		cnt, err := c.conn.Read(buf)
 		if err != nil {
 			fmt.Println("recv buf err:", err)

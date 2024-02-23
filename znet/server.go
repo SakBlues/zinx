@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/SakBlues/zinx/utils"
 	"github.com/SakBlues/zinx/ziface"
 )
 
@@ -30,7 +31,12 @@ type Server struct {
 // }
 
 func (s *Server) Start() {
-	fmt.Printf("[START] Server listenner at IP: %s, Port %d, Starting...\n", s.ip, s.port)
+	fmt.Printf("[START] Server name: %s,listenner at ip: %s, port %d is starting\n",
+		s.name, s.ip, s.port)
+	fmt.Printf("[Zinx] Version: %s, MaxConn: %d,  MaxPacketSize: %d\n",
+		utils.GlobalObject.Version,
+		utils.GlobalObject.MaxConn,
+		utils.GlobalObject.MaxPacketSize)
 
 	// Listener Business
 	go func() {
@@ -62,15 +68,12 @@ func (s *Server) Start() {
 				continue
 			}
 
-			dealConn := NewConnection(conn, cid, s.Router)
-			cid++
-
 			// TODO
 			// 3.2 Validate config, e.g., close the connection if exceed the max connections, etc.
 
-			// TODO
 			// 3.3 Handler business. Handler and conn should be bound at this point.
-			// Here is a demo: an echo service of up to 512 bytes.
+			dealConn := NewConnection(conn, cid, s.Router)
+			cid++
 			go dealConn.Start()
 		}
 	}()
@@ -100,10 +103,10 @@ func (s *Server) AddRouter(router ziface.IRouter) {
 
 func NewServer(name string) ziface.IServer {
 	s := &Server{
-		name:      name,
+		name:      utils.GlobalObject.Name,
 		ipVersion: "tcp4",
-		ip:        "0.0.0.0",
-		port:      8999,
+		ip:        utils.GlobalObject.Host,
+		port:      utils.GlobalObject.TcpPort,
 		Router:    nil,
 	}
 	return s

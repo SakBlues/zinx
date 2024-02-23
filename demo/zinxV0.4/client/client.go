@@ -16,7 +16,8 @@ func main() {
 	time.Sleep(1 * time.Second)
 
 	// 1. Connect to server.
-	conn, err := net.Dial("tcp", "127.0.0.1:8999")
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", utils.GlobalObject.Host,
+		utils.GlobalObject.TcpPort))
 	if err != nil {
 		fmt.Println("Client start failed, exit!")
 		return
@@ -24,7 +25,7 @@ func main() {
 
 	// 2. Write data.
 	for {
-		_, err := conn.Write([]byte("Hello Zinx V0.1."))
+		_, err := conn.Write([]byte("Hello Zinx V0.4."))
 		if err != nil {
 			fmt.Println("Write conn err: ", err)
 			return

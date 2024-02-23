@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"time"
+
+	"github.com/SakBlues/zinx/utils"
 )
 
 // Mock client
@@ -28,7 +30,7 @@ func main() {
 			return
 		}
 
-		buf := make([]byte, 512)
+		buf := make([]byte, utils.GlobalObject.MaxPacketSize)
 		cnt, err := conn.Read(buf)
 		if err != nil {
 			fmt.Println("read buf err: ", err)
